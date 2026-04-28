@@ -1,0 +1,204 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SURGE | College Event Management</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="home-topbar">
+        <div class="logo">SURGE</div>
+        <a id="home-auth-link" class="btn btn-outline" href="login.html">Login</a>
+    </header>
+
+    <header class="hero">
+        <div class="hero-orb orb-one"></div>
+        <div class="hero-orb orb-two"></div>
+        <div class="container animate">
+            <h1>SURGE</h1>
+            <p style="font-size: 1.35rem; color: var(--text-white); margin-bottom: 0.5rem;">Discover, Connect &amp; Manage Campus Events</p>
+            <p>A centralized platform for events, registrations, sponsors, budgets and reports.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="events.html" class="btn btn-primary">Explore Events</a>
+                <a id="home-cta-auth-link" href="login.html" class="btn btn-outline">Login</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Highlights Section -->
+        <section style="margin-bottom: 6rem;">
+            <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem;">Latest Highlights</h2>
+            <div class="grid">
+                <div class="glass-card">
+                    <img class="highlight-img" src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80" alt="Cybersecurity event" onerror="this.style.display='none';this.parentElement.querySelector('.fallback').style.display='block';" />
+                    <div class="highlight-img fallback" style="display:none; background: linear-gradient(135deg, #4ce5f1, #274a8b);"></div>
+                    <h3>SURGE 2.0 CTF Challenge</h3>
+                    <p style="color: var(--text-gray);">High-intensity security puzzles and live leaderboard action.</p>
+                </div>
+                <div class="glass-card">
+                    <img class="highlight-img" src="https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80" alt="AI workshop event" onerror="this.style.display='none';this.parentElement.querySelector('.fallback').style.display='block';" />
+                    <div class="highlight-img fallback" style="display:none; background: linear-gradient(135deg, #7f73ff, #3dc8c5);"></div>
+                    <h3>AI Workshop</h3>
+                    <p style="color: var(--text-gray);">Hands-on GenAI sessions with practical model deployment tips.</p>
+                </div>
+                <div class="glass-card">
+                    <img class="highlight-img" src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80" alt="Hackathon teams" onerror="this.style.display='none';this.parentElement.querySelector('.fallback').style.display='block';" />
+                    <div class="highlight-img fallback" style="display:none; background: linear-gradient(135deg, #22325c, #2d7fb0);"></div>
+                    <h3>Hackathon Night</h3>
+                    <p style="color: var(--text-gray);">A full-night sprint to build bold campus tech solutions.</p>
+                </div>
+                <div class="glass-card">
+                    <img class="highlight-img" src="https://images.unsplash.com/photo-1523726491678-bf852e717f6a?auto=format&fit=crop&w=1200&q=80" alt="Design sprint workshop" onerror="this.style.display='none';this.parentElement.querySelector('.fallback').style.display='block';" />
+                    <div class="highlight-img fallback" style="display:none; background: linear-gradient(135deg, #5240a6, #3bb9e6);"></div>
+                    <h3>Design Sprint</h3>
+                    <p style="color: var(--text-gray);">Rapid ideation and polished product prototyping in one day.</p>
+                </div>
+                <div class="glass-card">
+                    <img class="highlight-img" src="https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1200&q=80" alt="Robotics race track" onerror="this.style.display='none';this.parentElement.querySelector('.fallback').style.display='block';" />
+                    <div class="highlight-img fallback" style="display:none; background: linear-gradient(135deg, #243a6a, #33c6cf);"></div>
+                    <h3>Robo Race</h3>
+                    <p style="color: var(--text-gray);">Precision robotics challenge focused on speed and control.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Why Surge Section -->
+        <section style="margin-bottom: 6rem; background: var(--bg-navy); padding: 4rem 5%; border-radius: 30px; border: 1px solid var(--glass-border);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 4rem; align-items: center;">
+                <div>
+                    <h2 style="font-size: 2.5rem; margin-bottom: 1.5rem;">Why SURGE?</h2>
+                    <p style="color: var(--text-gray); margin-bottom: 2rem;">Stop juggling between scattered WhatsApp groups and messy Excel sheets. SURGE provides a single source of truth for your event ecosystem.</p>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: 1rem; color: var(--text-white);">
+                        <li>✓ Centralized participant registration</li>
+                        <li>✓ Budget and sponsor tracking</li>
+                        <li>✓ SQL-based reports for admins</li>
+                        <li>✓ Automated venue allocation</li>
+                    </ul>
+                </div>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div class="glass-card stat-card">
+                        <span class="value">10+</span>
+                        <span class="label">Modules</span>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <span class="value">100%</span>
+                        <span class="label">Data Integrity</span>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <span class="value">Real-time</span>
+                        <span class="label">Analytics</span>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <span class="value">Secure</span>
+                        <span class="label">Access</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modules Section -->
+        <section style="text-align: center; margin-top: 6rem;">
+            <h2 style="margin-bottom: 3rem; font-size: 2.5rem;">Comprehensive Modules</h2>
+            <div class="modules-grid">
+                <!-- Events Module -->
+                <a href="events.html" class="module-card glass-card">
+                    <div class="module-icon">📅</div>
+                    <h3>Events</h3>
+                    <p class="module-desc">Browse and register for upcoming events</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Dashboard Module -->
+                <a href="dashboard.html" class="module-card glass-card">
+                    <div class="module-icon">📊</div>
+                    <h3>Dashboard</h3>
+                    <p class="module-desc">View overall event statistics</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Venues Module -->
+                <a href="manage-venues.html" class="module-card glass-card">
+                    <div class="module-icon">🏢</div>
+                    <h3>Venues</h3>
+                    <p class="module-desc">Manage event locations</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Sponsors Module -->
+                <a href="manage-sponsors.html" class="module-card glass-card">
+                    <div class="module-icon">🤝</div>
+                    <h3>Sponsors</h3>
+                    <p class="module-desc">Track sponsors and contributions</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Budget Module -->
+                <a href="manage-budget.html" class="module-card glass-card">
+                    <div class="module-icon">💰</div>
+                    <h3>Budget</h3>
+                    <p class="module-desc">Monitor allocations and expenses</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Goodies Module -->
+                <a href="manage-goodies.html" class="module-card glass-card">
+                    <div class="module-icon">🎁</div>
+                    <h3>Goodies</h3>
+                    <p class="module-desc">Manage goodies and distribution</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Reports Module -->
+                <a href="reports.html" class="module-card glass-card">
+                    <div class="module-icon">📈</div>
+                    <h3>Reports</h3>
+                    <p class="module-desc">View SQL-based insights</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+                
+                <!-- Profile Module -->
+                <a href="profile.html" class="module-card glass-card">
+                    <div class="module-icon">👤</div>
+                    <h3>Profile</h3>
+                    <p class="module-desc">View account and registrations</p>
+                    <div class="module-cta">
+                        <span>Explore</span>
+                        <span style="font-size: 1.2rem;">→</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer style="margin-top: 6rem; padding: 4rem 5%; border-top: 1px solid var(--glass-border); text-align: center; color: var(--text-dim);">
+        <p>&copy; 2026 SURGE Event Management System.</p>
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

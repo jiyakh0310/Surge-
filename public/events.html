@@ -1,0 +1,43 @@
+<!-- public/events.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="events.html" class="active">Events</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="login.html" id="auth-btn">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <header style="margin-bottom: 3rem;">
+            <h1>Upcoming Events</h1>
+            <p style="color: var(--text-gray);">Discover and register for the most exciting campus events.</p>
+        </header>
+
+        <section class="filter-bar">
+            <input type="text" id="search-input" placeholder="Search events by title or club..." style="flex-grow: 1;">
+        </section>
+
+        <div id="events-grid" class="grid">
+            <!-- Events loaded via JS -->
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                <p>Loading events...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/events.js"></script>
+</body>
+</html>

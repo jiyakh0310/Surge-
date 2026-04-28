@@ -1,0 +1,88 @@
+<!-- public/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="reports.html">Reports</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="glass-card" style="max-width: 450px; margin: 4rem auto; padding: 3rem;">
+            <header style="margin-bottom: 2rem; text-align: center;">
+                <h1>Login</h1>
+                <p style="color: var(--text-dim);">Access organizer tools</p>
+            </header>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="email" placeholder="admin@surge.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Sign In</button>
+            </form>
+            
+            <div id="msg" style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem;"></div>
+
+            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--glass-border);">
+                <h4 style="margin-bottom: 1rem; color: var(--accent-cyan);">Demo Accounts</h4>
+                <div style="font-size: 0.85rem; color: var(--text-gray);">
+                    <p><strong>Organizer:</strong> organizer@surge.com / organizer123</p>
+                    <p><strong>Participant:</strong> student@surge.com / student123</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msg = document.getElementById('msg');
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    auth.setUser(data.user);
+                    msg.style.color = '#4ce5f1';
+                    msg.innerText = 'Login successful! Redirecting...';
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    msg.style.color = '#f783ac';
+                    msg.innerText = data.error;
+                }
+            } catch (err) {
+                msg.style.color = '#f783ac';
+                msg.innerText = 'Login failed. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>

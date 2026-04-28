@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Budget | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul></ul>
+    </nav>
+
+    <div class="container">
+        <header style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>Financial Management</h1>
+                <p style="color: var(--text-gray);">Track allocations and expenses per event.</p>
+            </div>
+            <div style="display:flex; gap:0.75rem;">
+                <button class="btn btn-outline" onclick="showBudgetModal()">Set Budget</button>
+                <button class="btn btn-primary" onclick="showExpenseModal()">Add Expense</button>
+            </div>
+        </header>
+        <p id="budget-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
+
+        <div class="grid" id="budget-grid">
+            <!-- Loaded via JS -->
+        </div>
+    </div>
+
+    <div id="budget-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="glass-card modal-card" style="width: 100%; max-width: 450px; padding: 2rem;">
+            <h2 style="margin-bottom: 1.5rem;">Set Event Budget</h2>
+            <form id="budget-form">
+                <div class="form-group">
+                    <label>Event</label>
+                    <select id="budget_event_id" required>
+                        <option value="">Select Event</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Budget Allocated</label>
+                    <input type="number" id="budget_allocated" step="0.01" required>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">Save Budget</button>
+                    <button type="button" class="btn btn-outline" onclick="hideBudgetModal()" style="flex:1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div id="expense-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="glass-card modal-card" style="width: 100%; max-width: 450px; padding: 2rem;">
+            <h2 style="margin-bottom: 1.5rem;">Add Expense</h2>
+            <form id="expense-form">
+                <div class="form-group">
+                    <label>Event</label>
+                    <select id="event_id" required>
+                        <option value="">Select Event</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="number" id="amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <input type="text" id="expense_type" placeholder="e.g. Marketing, Catering" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="expense_date" required>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Record Expense</button>
+                    <button type="button" class="btn btn-outline" onclick="hideExpenseModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.requireOrganizer();
+            loadBudgets();
+            loadEvents();
+        });
+
+        async function loadEvents() {
+            const res = await fetch('/api/events');
+            const result = await res.json();
+            const events = Array.isArray(result) ? result : (result.events || result.data || []);
+            const options = events
+                .map(e => `<option value="${e.event_id || e.id || ''}">${e.event_name || e.title || 'Untitled Event'}</option>`)
+                .join('');
+            document.getElementById('event_id').innerHTML += options;
+            document.getElementById('budget_event_id').innerHTML += options;
+        }
+
+        async function loadBudgets() {
+            try {
+                const res = await fetch('/api/budget');
+                const result = await res.json();
+                const data = Array.isArray(result) ? result : [];
+                const grid = document.getElementById('budget-grid');
+                
+                if (data.length === 0) {
+                    grid.innerHTML = '<div class="glass-card"><p style="color: var(--text-dim);">No data yet</p></div>';
+                    return;
+                }
+
+                grid.innerHTML = data.map(b => {
+                    const usage = ((b.budget_allocated - b.budget_remaining) / b.budget_allocated * 100) || 0;
+                    return `
+                        <div class="glass-card">
+                            <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">${b.event_name}</h3>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                                <span>Allocated:</span>
+                                <strong>$${Number(b.budget_allocated).toLocaleString()}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                <span>Remaining:</span>
+                                <strong style="color: var(--accent-lavender);">$${Number(b.budget_remaining).toLocaleString()}</strong>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar" style="width: ${usage}%"></div>
+                            </div>
+                            <p style="text-align: right; font-size: 0.75rem; margin-top: 0.5rem; color: var(--text-dim);">${usage.toFixed(1)}% Used</p>
+                            <button class="btn btn-outline" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--accent-pink); color: var(--accent-pink); margin-top: 1rem;" onclick="deleteBudget(${b.budget_id || 0})">Delete</button>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showExpenseModal() { document.getElementById('expense-modal').style.display = 'flex'; }
+        function hideExpenseModal() { document.getElementById('expense-modal').style.display = 'none'; }
+        function showBudgetModal() { document.getElementById('budget-modal').style.display = 'flex'; }
+        function hideBudgetModal() { document.getElementById('budget-modal').style.display = 'none'; }
+
+        async function deleteBudget(id) {
+            if (confirm('Are you sure you want to delete this budget?')) {
+                try {
+                    const res = await fetch(`/api/budget/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        loadBudgets();
+                        const msg = document.getElementById('budget-msg');
+                        msg.style.color = 'var(--accent-cyan)';
+                        msg.textContent = 'Budget deleted successfully.';
+                        setTimeout(() => { msg.textContent = ''; }, 3000);
+                    } else {
+                        alert('Error deleting budget');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error deleting budget');
+                }
+            }
+        }
+
+        document.getElementById('expense-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('budget-msg');
+            const data = {
+                event_id: document.getElementById('event_id').value,
+                amount: document.getElementById('amount').value,
+                expense_type: document.getElementById('expense_type').value,
+                description: document.getElementById('description').value,
+                expense_date: document.getElementById('expense_date').value
+            };
+
+            const res = await fetch('/api/expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                hideExpenseModal();
+                loadBudgets();
+                document.getElementById('expense-form').reset();
+                msg.style.color = 'var(--accent-cyan)';
+                msg.textContent = 'Expense saved successfully.';
+            } else {
+                const err = await res.json();
+                msg.style.color = 'var(--accent-pink)';
+                msg.textContent = `Error: ${err.error || 'Unable to save expense.'}`;
+            }
+        });
+
+        document.getElementById('budget-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('budget-msg');
+            const payload = {
+                event_id: document.getElementById('budget_event_id').value,
+                budget_allocated: document.getElementById('budget_allocated').value
+            };
+            const res = await fetch('/api/budget', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                hideBudgetModal();
+                loadBudgets();
+                document.getElementById('budget-form').reset();
+                msg.style.color = 'var(--accent-cyan)';
+                msg.textContent = 'Budget saved successfully.';
+            } else {
+                const err = await res.json();
+                msg.style.color = 'var(--accent-pink)';
+                msg.textContent = `Error: ${err.error || 'Unable to save budget.'}`;
+            }
+        });
+    </script>
+</body>
+</html>

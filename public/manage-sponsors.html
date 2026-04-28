@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sponsors | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul></ul>
+    </nav>
+
+    <div class="container">
+        <header style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>Manage Sponsors</h1>
+                <p style="color: var(--text-gray);">Track corporate partnerships and contributions.</p>
+            </div>
+            <button class="btn btn-primary" onclick="showAddModal()">Add Sponsor</button>
+        </header>
+        <p id="sponsor-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
+
+        <div class="glass-card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sponsor Name</th>
+                            <th>Contact</th>
+                            <th>Linked Event</th>
+                            <th>Contribution</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sponsors-table-body">
+                        <tr><td colspan="4" style="text-align: center;">Loading sponsors...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div id="add-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="glass-card modal-card" style="width: 100%; max-width: 450px; padding: 2rem;">
+            <h2 style="margin-bottom: 1.5rem;">Add Sponsor</h2>
+            <form id="add-sponsor-form">
+                <div class="form-group">
+                    <label>Sponsor Name</label>
+                    <input type="text" id="sponsor_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Contact Number</label>
+                    <input type="text" id="contact_no" required>
+                </div>
+                <div class="form-group">
+                    <label>Contribution Amount</label>
+                    <input type="number" id="contribution_amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Linked Event</label>
+                    <select id="event_id" required>
+                        <option value="">Select Event</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Sponsor</button>
+                    <button type="button" class="btn btn-outline" onclick="hideAddModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.requireOrganizer();
+            loadSponsors();
+            loadEvents();
+        });
+
+        async function loadEvents() {
+            const res = await fetch('/api/events');
+            const result = await res.json();
+            const events = Array.isArray(result) ? result : (result.events || result.data || []);
+            document.getElementById('event_id').innerHTML += events
+                .map(e => `<option value="${e.event_id || e.id || ''}">${e.event_name || e.title || 'Untitled Event'}</option>`)
+                .join('');
+        }
+
+        async function loadSponsors() {
+            try {
+                const res = await fetch('/api/sponsors');
+                const result = await res.json();
+                const data = Array.isArray(result) ? result : [];
+                const tbody = document.getElementById('sponsors-table-body');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">No data yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(s => `
+                    <tr>
+                        <td><strong>${s.sponsor_name || 'Unnamed Sponsor'}</strong></td>
+                        <td>${s.contact_no || 'Not assigned'}</td>
+                        <td style="color: var(--accent-lavender);">${s.event_name || 'Untitled Event'}</td>
+                        <td style="color: var(--accent-cyan); display: flex; justify-content: space-between; align-items: center;">
+                            <span>$${Number(s.contribution_amount).toLocaleString()}</span>
+                            <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: var(--accent-pink); color: var(--accent-pink); white-space: nowrap; margin-left: 1rem;" onclick="deleteSponsor(${s.sponsor_id || 0})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showAddModal() { document.getElementById('add-modal').style.display = 'flex'; }
+        function hideAddModal() { document.getElementById('add-modal').style.display = 'none'; }
+
+        async function deleteSponsor(id) {
+            if (confirm('Are you sure you want to delete this sponsor?')) {
+                try {
+                    const res = await fetch(`/api/sponsors/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        loadSponsors();
+                        const msg = document.getElementById('sponsor-msg');
+                        msg.style.color = 'var(--accent-cyan)';
+                        msg.textContent = 'Sponsor deleted successfully.';
+                        setTimeout(() => { msg.textContent = ''; }, 3000);
+                    } else {
+                        alert('Error deleting sponsor');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error deleting sponsor');
+                }
+            }
+        }
+
+        document.getElementById('add-sponsor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('sponsor-msg');
+            const data = {
+                sponsor_name: document.getElementById('sponsor_name').value,
+                contact_no: document.getElementById('contact_no').value,
+                contribution_amount: document.getElementById('contribution_amount').value,
+                event_id: document.getElementById('event_id').value
+            };
+
+            const res = await fetch('/api/sponsors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                hideAddModal();
+                loadSponsors();
+                document.getElementById('add-sponsor-form').reset();
+                msg.style.color = 'var(--accent-cyan)';
+                msg.textContent = 'Sponsor saved successfully.';
+            } else {
+                const err = await res.json();
+                msg.style.color = 'var(--accent-pink)';
+                msg.textContent = `Error: ${err.error || 'Unable to save sponsor.'}`;
+            }
+        });
+    </script>
+</body>
+</html>

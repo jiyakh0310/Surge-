@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Venues | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul></ul>
+    </nav>
+
+    <div class="container">
+        <header style="margin-bottom: 3rem; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h1>Manage Venues</h1>
+                <p style="color: var(--text-gray);">View campus locations and capacities.</p>
+            </div>
+            <button class="btn btn-primary" onclick="showVenueModal()">Add Venue</button>
+        </header>
+        <p id="venue-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
+
+        <div class="grid" id="venues-grid">
+            <!-- Loaded via JS -->
+        </div>
+    </div>
+    <div id="venue-modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="glass-card modal-card" style="width: 100%; max-width: 500px; padding: 2rem;">
+            <h2 style="margin-bottom: 1rem;">Add Venue</h2>
+            <form id="venue-form">
+                <div class="form-group"><label>Name</label><input id="venue_name" required /></div>
+                <div class="form-group"><label>Capacity</label><input id="capacity" type="number" required /></div>
+                <div class="form-group"><label>Timings</label><input id="venue_timings" /></div>
+                <div class="form-group"><label>POC Name</label><input id="poc_name" /></div>
+                <div class="form-group"><label>POC Contact</label><input id="poc_contact" /></div>
+                <div style="display:flex; gap:1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">Save Venue</button>
+                    <button type="button" class="btn btn-outline" onclick="hideVenueModal()" style="flex:1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.requireOrganizer();
+            loadVenues();
+        });
+
+        async function loadVenues() {
+            try {
+                const res = await fetch('/api/venues');
+                const venues = await res.json();
+                const grid = document.getElementById('venues-grid');
+                const safeVenues = Array.isArray(venues) ? venues : [];
+                if (safeVenues.length === 0) {
+                    grid.innerHTML = '<div class="glass-card"><p style="color: var(--text-dim);">No data yet</p></div>';
+                    return;
+                }
+                
+                grid.innerHTML = safeVenues.map(v => `
+                    <div class="glass-card">
+                        <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">${v.venue_name || v.name || 'Unnamed Venue'}</h3>
+                        <p style="margin-bottom: 0.5rem;"><strong>Capacity:</strong> ${v.capacity ?? 0} persons</p>
+                        <p style="margin-bottom: 1.5rem;"><strong>Timings:</strong> ${v.venue_timings || 'Not assigned'}</p>
+                        <button class="btn btn-outline" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="deleteVenue(${v.venue_id || v.id})">Delete</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Error loading venues:', err);
+            }
+        }
+        function showVenueModal() { document.getElementById('venue-modal').style.display = 'flex'; }
+        function hideVenueModal() { document.getElementById('venue-modal').style.display = 'none'; }
+
+        async function deleteVenue(id) {
+            if (confirm('Are you sure you want to delete this venue?')) {
+                try {
+                    const res = await fetch(`/api/venues/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        loadVenues();
+                        const msg = document.getElementById('venue-msg');
+                        msg.style.color = 'var(--accent-cyan)';
+                        msg.textContent = 'Venue deleted successfully.';
+                        setTimeout(() => { msg.textContent = ''; }, 3000);
+                    } else {
+                        alert('Error deleting venue');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error deleting venue');
+                }
+            }
+        }
+
+        document.getElementById('venue-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('venue-msg');
+            const payload = {
+                name: document.getElementById('venue_name').value,
+                capacity: document.getElementById('capacity').value,
+                venue_timings: document.getElementById('venue_timings').value,
+                poc_name: document.getElementById('poc_name').value,
+                poc_contact: document.getElementById('poc_contact').value
+            };
+            const res = await fetch('/api/venues', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                hideVenueModal();
+                document.getElementById('venue-form').reset();
+                loadVenues();
+                msg.style.color = 'var(--accent-cyan)';
+                msg.textContent = 'Venue saved successfully.';
+            } else {
+                const err = await res.json();
+                msg.style.color = 'var(--accent-pink)';
+                msg.textContent = `Error: ${err.error || 'Unable to save venue.'}`;
+            }
+        });
+    </script>
+</body>
+</html>

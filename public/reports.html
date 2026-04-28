@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul></ul>
+    </nav>
+
+    <div class="container">
+        <header style="margin-bottom: 3rem;">
+            <h1>Ecosystem Reports</h1>
+            <p style="color: var(--text-gray);">Data-driven insights for event evaluation.</p>
+        </header>
+
+        <div class="grid">
+            <!-- Event Attendance -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1.5rem; color: var(--accent-cyan);">Event Attendance</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Registrations</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-report"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sponsor Contributions -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1.5rem; color: var(--accent-lavender);">Sponsor Contributions</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sponsor</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sponsor-report"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Budget Status -->
+            <div class="glass-card" style="grid-column: 1 / -1;">
+                <h3 style="margin-bottom: 1.5rem; color: var(--accent-pink);">Budget Status</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Allocated</th>
+                                <th>Remaining</th>
+                                <th>Usage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="budget-report"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1.5rem; color: var(--accent-cyan);">Venue Allocation</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Venue</th><th>Events Hosted</th></tr></thead>
+                        <tbody id="venue-report"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1.5rem; color: var(--accent-lavender);">Goodies Distribution</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Goodie</th><th>Status</th><th>Count</th></tr></thead>
+                        <tbody id="goodie-report"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.requireOrganizer();
+            loadReports();
+        });
+
+        async function loadReports() {
+            try {
+                // Load Attendance
+                const attRes = await fetch('/api/reports/event-attendance');
+                const attData = await attRes.json();
+                document.getElementById('attendance-report').innerHTML = attData.length ? attData.map(r => `
+                    <tr>
+                        <td>${r.event_name || 'Untitled Event'}</td>
+                        <td><strong>${r.attendance || 0}</strong></td>
+                    </tr>
+                `).join('') : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+
+                // Load Sponsors
+                const spRes = await fetch('/api/reports/sponsor-contributions');
+                const spData = await spRes.json();
+                document.getElementById('sponsor-report').innerHTML = spData.length ? spData.map(r => `
+                    <tr>
+                        <td>${r.sponsor_name || 'Unnamed Sponsor'}</td>
+                        <td><strong>$${Number(r.total_contribution || 0).toLocaleString()}</strong></td>
+                    </tr>
+                `).join('') : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+
+                // Load Budget
+                const bgRes = await fetch('/api/reports/budget-status');
+                const bgData = await bgRes.json();
+                document.getElementById('budget-report').innerHTML = bgData.length ? bgData.map(r => {
+                    const usage = ((r.budget_allocated - r.budget_remaining) / r.budget_allocated * 100) || 0;
+                    return `
+                        <tr>
+                            <td>${r.event_name || 'Untitled Event'}</td>
+                            <td>$${Number(r.budget_allocated || 0).toLocaleString()}</td>
+                            <td style="color: ${r.budget_remaining < 500 ? 'var(--accent-pink)' : 'var(--text-white)'}">$${Number(r.budget_remaining || 0).toLocaleString()}</td>
+                            <td style="width: 200px;">
+                                <div class="progress-container">
+                                    <div class="progress-bar" style="width: ${usage}%"></div>
+                                </div>
+                                <span style="font-size: 0.75rem;">${usage.toFixed(1)}% spent</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('') : '<tr><td colspan="4" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+
+                const venueRes = await fetch('/api/reports/venue-usage');
+                const venueData = await venueRes.json();
+                document.getElementById('venue-report').innerHTML = venueData.length ? venueData.map(r => `
+                    <tr>
+                        <td>${r.venue_name || 'Unnamed Venue'}</td>
+                        <td><strong>${r.events_hosted || 0}</strong></td>
+                    </tr>
+                `).join('') : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+
+                const goodieRes = await fetch('/api/reports/goodies-status');
+                const goodieData = await goodieRes.json();
+                document.getElementById('goodie-report').innerHTML = goodieData.length ? goodieData.map(r => `
+                    <tr>
+                        <td>${r.goodie_name || 'Unnamed Goodie'}</td>
+                        <td>${r.status || 'pending'}</td>
+                        <td><strong>${r.count || 0}</strong></td>
+                    </tr>
+                `).join('') : '<tr><td colspan="3" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+
+            } catch (err) {
+                console.error('Error loading reports:', err);
+            }
+        }
+    </script>
+</body>
+</html>
