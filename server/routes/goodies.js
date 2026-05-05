@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
+function parseNullableInt(value) {
+    if (value === '' || value === undefined || value === null) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
 // Get all goodies
 router.get('/', async (req, res) => {
     try {
@@ -9,6 +15,9 @@ router.get('/', async (req, res) => {
             SELECT
                 g.goodie_id,
                 g.goodie_name,
+                g.sponsor_id,
+                g.event_id,
+                g.committee_id,
                 s.sponsor_name,
                 e.title AS event_name,
                 COALESCE(gd.status, 'pending') AS status
@@ -22,6 +31,9 @@ router.get('/', async (req, res) => {
             ? rows.map((row) => ({
                 goodie_id: row.goodie_id ?? 0,
                 goodie_name: row.goodie_name ?? 'Unnamed Goodie',
+                sponsor_id: row.sponsor_id ?? null,
+                event_id: row.event_id ?? null,
+                committee_id: row.committee_id ?? null,
                 sponsor_name: row.sponsor_name ?? 'Unnamed Sponsor',
                 event_name: row.event_name ?? 'Untitled Event',
                 status: row.status ?? 'pending'
@@ -41,12 +53,32 @@ router.post('/', async (req, res) => {
             'INSERT INTO goodies (goodie_name, sponsor_id, event_id, committee_id) VALUES (?, ?, ?, ?)',
             [
                 (goodie_name ?? '').toString().trim() || 'Unnamed Goodie',
-                sponsor_id ?? null,
-                event_id ?? null,
-                committee_id ?? null
+                parseNullableInt(sponsor_id),
+                parseNullableInt(event_id),
+                parseNullableInt(committee_id)
             ]
         );
         res.json({ id: result.insertId, message: 'Goodie added' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update goodie
+router.put('/:goodie_id', async (req, res) => {
+    const { goodie_name, sponsor_id, event_id, committee_id } = req.body;
+    try {
+        await pool.query(
+            'UPDATE goodies SET goodie_name = ?, sponsor_id = ?, event_id = ?, committee_id = ? WHERE goodie_id = ?',
+            [
+                (goodie_name ?? '').toString().trim() || 'Unnamed Goodie',
+                parseNullableInt(sponsor_id),
+                parseNullableInt(event_id),
+                parseNullableInt(committee_id),
+                req.params.goodie_id
+            ]
+        );
+        res.json({ message: 'Goodie updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

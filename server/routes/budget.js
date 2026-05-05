@@ -108,6 +108,40 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Update budget
+router.put('/:budget_id', async (req, res) => {
+    const { event_id, budget_allocated, budget_remaining } = req.body;
+    const normalizedAllocated = Number.isFinite(Number(budget_allocated)) ? Number(budget_allocated) : 0;
+    try {
+        let normalizedRemaining;
+        if (budget_remaining !== undefined && budget_remaining !== null && budget_remaining !== '') {
+            normalizedRemaining = Number.isFinite(Number(budget_remaining)) ? Number(budget_remaining) : normalizedAllocated;
+        } else {
+            const [prevRows] = await pool.query(
+                'SELECT budget_allocated, budget_remaining FROM budget WHERE budget_id = ? LIMIT 1',
+                [req.params.budget_id]
+            );
+            if (Array.isArray(prevRows) && prevRows.length > 0) {
+                const spent = Math.max(
+                    0,
+                    Number(prevRows[0].budget_allocated || 0) - Number(prevRows[0].budget_remaining || 0)
+                );
+                normalizedRemaining = Math.max(0, normalizedAllocated - spent);
+            } else {
+                normalizedRemaining = normalizedAllocated;
+            }
+        }
+
+        await pool.query(
+            'UPDATE budget SET event_id = ?, budget_allocated = ?, budget_remaining = ? WHERE budget_id = ?',
+            [event_id ?? null, normalizedAllocated, normalizedRemaining, req.params.budget_id]
+        );
+        res.json({ message: 'Budget updated' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Delete budget
 router.delete('/:budget_id', async (req, res) => {
     try {

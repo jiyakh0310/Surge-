@@ -18,20 +18,25 @@
                 <h1>Goodie Management</h1>
                 <p style="color: var(--text-gray);">Manage distribution of event swag and perks.</p>
             </div>
-            <button class="btn btn-primary" onclick="showAddModal()">Add Goodie</button>
+            <button class="btn btn-primary" onclick="openModal()">Add Goodie</button>
         </header>
         <p id="goodie-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
+
+        <section class="filter-bar" style="margin-bottom: 1.25rem;">
+            <input type="search" id="goodies-search" placeholder="Search by goodie, event, or sponsor..." style="flex: 1; max-width: 420px;">
+        </section>
 
         <div class="grid" id="goodies-grid">
             <!-- Loaded via JS -->
         </div>
     </div>
 
-    <!-- Add Modal -->
-    <div id="add-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+    <!-- Add/Edit Modal -->
+    <div id="goodie-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
         <div class="glass-card modal-card" style="width: 100%; max-width: 450px; padding: 2rem;">
-            <h2 style="margin-bottom: 1.5rem;">Add Goodie</h2>
-            <form id="add-goodie-form">
+            <h2 id="modal-title" style="margin-bottom: 1.5rem;">Add Goodie</h2>
+            <form id="goodie-form">
+                <input type="hidden" id="edit_id">
                 <div class="form-group">
                     <label>Goodie Name</label>
                     <input type="text" id="goodie_name" placeholder="e.g. T-Shirt, Stickers" required>
@@ -48,9 +53,13 @@
                         <option value="">Select Event</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Committee ID <span style="color: var(--text-dim); font-weight: 400;">(optional)</span></label>
+                    <input type="number" id="committee_id" min="0" placeholder="Leave blank if none">
+                </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Goodie</button>
-                    <button type="button" class="btn btn-outline" onclick="hideAddModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;" id="modal-submit-btn">Save Goodie</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex: 1;">Cancel</button>
                 </div>
             </form>
         </div>
@@ -59,24 +68,71 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
+        let sponsorsCache = [];
+        let eventsCache = [];
+        let goodiesAll = [];
+
         document.addEventListener('DOMContentLoaded', () => {
             auth.requireOrganizer();
             loadGoodies();
             loadDropdowns();
+            const ge = document.getElementById('goodies-search');
+            if (ge) ge.addEventListener('input', () => renderGoodiesGrid());
         });
 
         async function loadDropdowns() {
             const [sponsorsRes, eventsRes] = await Promise.all([fetch('/api/sponsors'), fetch('/api/events')]);
             const sponsorsResult = await sponsorsRes.json();
-            const sponsors = Array.isArray(sponsorsResult) ? sponsorsResult : [];
+            sponsorsCache = Array.isArray(sponsorsResult) ? sponsorsResult : [];
             const eventsResult = await eventsRes.json();
-            const events = Array.isArray(eventsResult) ? eventsResult : (eventsResult.events || eventsResult.data || []);
+            eventsCache = Array.isArray(eventsResult) ? eventsResult : (eventsResult.events || eventsResult.data || []);
+        }
 
-            document.getElementById('sponsor_id').innerHTML += sponsors
-                .map(s => `<option value="${s.sponsor_id || ''}">${s.sponsor_name || 'Unnamed Sponsor'}</option>`)
-                .join('');
-            document.getElementById('event_id').innerHTML += events
-                .map(e => `<option value="${e.event_id || e.id || ''}">${e.event_name || e.title || 'Untitled Event'}</option>`)
+        function populateDropdowns(selectedSponsor, selectedEvent) {
+            document.getElementById('sponsor_id').innerHTML = '<option value="">Select Sponsor</option>' +
+                sponsorsCache.map(s => `<option value="${s.sponsor_id || ''}" ${s.sponsor_id == selectedSponsor ? 'selected' : ''}>${s.sponsor_name || 'Unnamed Sponsor'}</option>`).join('');
+            document.getElementById('event_id').innerHTML = '<option value="">Select Event</option>' +
+                eventsCache.map(e => `<option value="${e.event_id || e.id || ''}" ${(e.event_id || e.id) == selectedEvent ? 'selected' : ''}>${e.event_name || e.title || 'Untitled Event'}</option>`).join('');
+        }
+
+        function renderGoodiesGrid() {
+            const grid = document.getElementById('goodies-grid');
+            const q = (document.getElementById('goodies-search')?.value || '').toLowerCase().trim();
+            const data = !q
+                ? goodiesAll
+                : goodiesAll.filter((g) => {
+                      const gn = (g.goodie_name || '').toLowerCase();
+                      const en = (g.event_name || '').toLowerCase();
+                      const sn = (g.sponsor_name || '').toLowerCase();
+                      return gn.includes(q) || en.includes(q) || sn.includes(q);
+                  });
+
+            if (goodiesAll.length === 0) {
+                grid.innerHTML = '<div class="glass-card"><p style="color: var(--text-dim);">No data yet</p></div>';
+                return;
+            }
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="glass-card"><p style="color: var(--text-dim);">No matches.</p></div>';
+                return;
+            }
+
+            grid.innerHTML = data
+                .map(
+                    (g) => `
+                    <div class="glass-card mgmt-card">
+                        <div class="card-actions">
+                            <button type="button" class="action-icon" title="Edit" onclick="beginEditGoodie(${g.goodie_id})">✏️</button>
+                            <button type="button" class="action-icon delete" title="Delete" onclick="deleteGoodie(${g.goodie_id || 0})">🗑️</button>
+                        </div>
+                        <div class="card-body-scroll">
+                            <h3 style="color: var(--accent-pink); margin-bottom: 1rem;">${g.goodie_name || 'Unnamed Goodie'}</h3>
+                            <p style="font-size: 0.9rem; margin-bottom: 0.5rem;"><strong>Sponsor:</strong> ${g.sponsor_name || 'Unnamed Sponsor'}</p>
+                            <p style="font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--text-dim);"><strong>Event:</strong> ${g.event_name || 'Untitled Event'}</p>
+                            <p style="font-size: 0.82rem; color: var(--text-dim);"><strong>Committee:</strong> ${g.committee_id != null ? g.committee_id : '—'}</p>
+                        </div>
+                    </div>
+                `
+                )
                 .join('');
         }
 
@@ -84,28 +140,39 @@
             try {
                 const res = await fetch('/api/goodies');
                 const result = await res.json();
-                const data = Array.isArray(result) ? result : [];
-                const grid = document.getElementById('goodies-grid');
-                if (data.length === 0) {
-                    grid.innerHTML = '<div class="glass-card"><p style="color: var(--text-dim);">No data yet</p></div>';
-                    return;
-                }
-                
-                grid.innerHTML = data.map(g => `
-                    <div class="glass-card">
-                        <h3 style="color: var(--accent-pink); margin-bottom: 1rem;">${g.goodie_name || 'Unnamed Goodie'}</h3>
-                        <p style="font-size: 0.9rem; margin-bottom: 0.5rem;"><strong>Sponsor:</strong> ${g.sponsor_name || 'Unnamed Sponsor'}</p>
-                        <p style="font-size: 0.9rem; margin-bottom: 1.5rem; color: var(--text-dim);"><strong>Event:</strong> ${g.event_name || 'Untitled Event'}</p>
-                        <button class="btn btn-outline" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="deleteGoodie(${g.goodie_id || 0})">Delete</button>
-                    </div>
-                `).join('');
+                goodiesAll = Array.isArray(result) ? result : [];
+                renderGoodiesGrid();
             } catch (err) {
                 console.error(err);
             }
         }
 
-        function showAddModal() { document.getElementById('add-modal').style.display = 'flex'; }
-        function hideAddModal() { document.getElementById('add-modal').style.display = 'none'; }
+        function openModal(isEdit = false) {
+            document.getElementById('modal-title').textContent = isEdit ? 'Edit Goodie' : 'Add Goodie';
+            document.getElementById('modal-submit-btn').textContent = isEdit ? 'Update Goodie' : 'Save Goodie';
+            if (!isEdit) {
+                document.getElementById('goodie-form').reset();
+                document.getElementById('edit_id').value = '';
+                document.getElementById('committee_id').value = '';
+                populateDropdowns('', '');
+            }
+            document.getElementById('goodie-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('goodie-modal').style.display = 'none';
+        }
+
+        function beginEditGoodie(id) {
+            const g = goodiesAll.find((x) => Number(x.goodie_id) === Number(id));
+            if (!g) return;
+            document.getElementById('edit_id').value = g.goodie_id;
+            document.getElementById('goodie_name').value = g.goodie_name || '';
+            document.getElementById('committee_id').value =
+                g.committee_id != null && g.committee_id !== '' ? g.committee_id : '';
+            populateDropdowns(g.sponsor_id, g.event_id);
+            openModal(true);
+        }
 
         async function deleteGoodie(id) {
             if (confirm('Are you sure you want to delete this goodie?')) {
@@ -127,26 +194,34 @@
             }
         }
 
-        document.getElementById('add-goodie-form').addEventListener('submit', async (e) => {
+        document.getElementById('goodie-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('goodie-msg');
+            const editId = document.getElementById('edit_id').value;
+            const spon = document.getElementById('sponsor_id').value;
+            const ev = document.getElementById('event_id').value;
+            const com = document.getElementById('committee_id').value;
             const data = {
                 goodie_name: document.getElementById('goodie_name').value,
-                sponsor_id: document.getElementById('sponsor_id').value,
-                event_id: document.getElementById('event_id').value
+                sponsor_id: spon === '' ? null : Number(spon),
+                event_id: ev === '' ? null : Number(ev),
+                committee_id: com === '' ? null : Number(com)
             };
 
-            const res = await fetch('/api/goodies', {
-                method: 'POST',
+            const url = editId ? `/api/goodies/${editId}` : '/api/goodies';
+            const method = editId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             if (res.ok) {
-                hideAddModal();
+                closeModal();
                 loadGoodies();
-                document.getElementById('add-goodie-form').reset();
+                document.getElementById('goodie-form').reset();
                 msg.style.color = 'var(--accent-cyan)';
-                msg.textContent = 'Goodie saved successfully.';
+                msg.textContent = editId ? 'Goodie updated successfully.' : 'Goodie saved successfully.';
+                setTimeout(() => { msg.textContent = ''; }, 3000);
             } else {
                 const err = await res.json();
                 msg.style.color = 'var(--accent-pink)';

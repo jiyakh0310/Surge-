@@ -18,11 +18,15 @@
             <p style="color: var(--text-gray);">Data-driven insights for event evaluation.</p>
         </header>
 
-        <div class="grid">
+        <section class="filter-bar" style="margin-bottom: 1.25rem;">
+            <input type="search" id="reports-search" placeholder="Filter reports (event, sponsor, venue...)" style="flex: 1; max-width: 420px;">
+        </section>
+
+        <div id="reports-grid" class="grid">
             <!-- Event Attendance -->
             <div class="glass-card">
                 <h3 style="margin-bottom: 1.5rem; color: var(--accent-cyan);">Event Attendance</h3>
-                <div class="table-container">
+                <div class="table-container card-scroll-inner">
                     <table>
                         <thead>
                             <tr>
@@ -38,7 +42,7 @@
             <!-- Sponsor Contributions -->
             <div class="glass-card">
                 <h3 style="margin-bottom: 1.5rem; color: var(--accent-lavender);">Sponsor Contributions</h3>
-                <div class="table-container">
+                <div class="table-container card-scroll-inner">
                     <table>
                         <thead>
                             <tr>
@@ -54,7 +58,7 @@
             <!-- Budget Status -->
             <div class="glass-card" style="grid-column: 1 / -1;">
                 <h3 style="margin-bottom: 1.5rem; color: var(--accent-pink);">Budget Status</h3>
-                <div class="table-container">
+                <div class="table-container card-scroll-inner">
                     <table>
                         <thead>
                             <tr>
@@ -71,7 +75,7 @@
 
             <div class="glass-card">
                 <h3 style="margin-bottom: 1.5rem; color: var(--accent-cyan);">Venue Allocation</h3>
-                <div class="table-container">
+                <div class="table-container card-scroll-inner">
                     <table>
                         <thead><tr><th>Venue</th><th>Events Hosted</th></tr></thead>
                         <tbody id="venue-report"></tbody>
@@ -81,7 +85,7 @@
 
             <div class="glass-card">
                 <h3 style="margin-bottom: 1.5rem; color: var(--accent-lavender);">Goodies Distribution</h3>
-                <div class="table-container">
+                <div class="table-container card-scroll-inner">
                     <table>
                         <thead><tr><th>Goodie</th><th>Status</th><th>Count</th></tr></thead>
                         <tbody id="goodie-report"></tbody>
@@ -94,43 +98,86 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
+        let reportsCache = {
+            attendance: [],
+            sponsors: [],
+            budget: [],
+            venues: [],
+            goodies: []
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             auth.requireOrganizer();
             loadReports();
+            const rs = document.getElementById('reports-search');
+            if (rs) rs.addEventListener('input', () => renderReportsTables());
         });
 
-        async function loadReports() {
-            try {
-                // Load Attendance
-                const attRes = await fetch('/api/reports/event-attendance');
-                const attData = await attRes.json();
-                document.getElementById('attendance-report').innerHTML = attData.length ? attData.map(r => `
+        function reportsFilter(q, haystack) {
+            if (!q) return true;
+            const flat = haystack.join(' ').toLowerCase();
+            return flat.includes(q);
+        }
+
+        function renderReportsTables() {
+            const q = (document.getElementById('reports-search')?.value || '').toLowerCase().trim();
+
+            const attData = reportsCache.attendance.filter((r) =>
+                reportsFilter(q, [r.event_name || '', String(r.attendance || '')])
+            );
+            document.getElementById('attendance-report').innerHTML = reportsCache.attendance.length
+                ? attData.length
+                    ? attData
+                          .map(
+                              (r) => `
                     <tr>
                         <td>${r.event_name || 'Untitled Event'}</td>
                         <td><strong>${r.attendance || 0}</strong></td>
                     </tr>
-                `).join('') : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+                `
+                          )
+                          .join('')
+                    : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No matches.</td></tr>'
+                : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
 
-                // Load Sponsors
-                const spRes = await fetch('/api/reports/sponsor-contributions');
-                const spData = await spRes.json();
-                document.getElementById('sponsor-report').innerHTML = spData.length ? spData.map(r => `
+            const spData = reportsCache.sponsors.filter((r) =>
+                reportsFilter(q, [r.sponsor_name || '', String(r.total_contribution || '')])
+            );
+            document.getElementById('sponsor-report').innerHTML = reportsCache.sponsors.length
+                ? spData.length
+                    ? spData
+                          .map(
+                              (r) => `
                     <tr>
                         <td>${r.sponsor_name || 'Unnamed Sponsor'}</td>
-                        <td><strong>$${Number(r.total_contribution || 0).toLocaleString()}</strong></td>
+                        <td><strong>₹${Number(r.total_contribution || 0).toLocaleString()}</strong></td>
                     </tr>
-                `).join('') : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+                `
+                          )
+                          .join('')
+                    : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No matches.</td></tr>'
+                : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
 
-                // Load Budget
-                const bgRes = await fetch('/api/reports/budget-status');
-                const bgData = await bgRes.json();
-                document.getElementById('budget-report').innerHTML = bgData.length ? bgData.map(r => {
-                    const usage = ((r.budget_allocated - r.budget_remaining) / r.budget_allocated * 100) || 0;
-                    return `
+            const bgData = reportsCache.budget.filter((r) =>
+                reportsFilter(q, [
+                    r.event_name || '',
+                    String(r.budget_allocated || ''),
+                    String(r.budget_remaining || '')
+                ])
+            );
+            document.getElementById('budget-report').innerHTML = reportsCache.budget.length
+                ? bgData.length
+                    ? bgData
+                          .map((r) => {
+                              const usage =
+                                  r.budget_allocated > 0
+                                      ? ((r.budget_allocated - r.budget_remaining) / r.budget_allocated) * 100
+                                      : 0;
+                              return `
                         <tr>
                             <td>${r.event_name || 'Untitled Event'}</td>
-                            <td>$${Number(r.budget_allocated || 0).toLocaleString()}</td>
-                            <td style="color: ${r.budget_remaining < 500 ? 'var(--accent-pink)' : 'var(--text-white)'}">$${Number(r.budget_remaining || 0).toLocaleString()}</td>
+                            <td>₹${Number(r.budget_allocated || 0).toLocaleString()}</td>
+                            <td style="color: ${r.budget_remaining < 500 ? 'var(--accent-pink)' : 'var(--text-white)'}">₹${Number(r.budget_remaining || 0).toLocaleString()}</td>
                             <td style="width: 200px;">
                                 <div class="progress-container">
                                     <div class="progress-bar" style="width: ${usage}%"></div>
@@ -139,30 +186,72 @@
                             </td>
                         </tr>
                     `;
-                }).join('') : '<tr><td colspan="4" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+                          })
+                          .join('')
+                    : '<tr><td colspan="4" style="color: var(--text-dim); text-align:center;">No matches.</td></tr>'
+                : '<tr><td colspan="4" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
 
-                const venueRes = await fetch('/api/reports/venue-usage');
-                const venueData = await venueRes.json();
-                document.getElementById('venue-report').innerHTML = venueData.length ? venueData.map(r => `
+            const venueData = reportsCache.venues.filter((r) =>
+                reportsFilter(q, [r.venue_name || '', String(r.events_hosted || '')])
+            );
+            document.getElementById('venue-report').innerHTML = reportsCache.venues.length
+                ? venueData.length
+                    ? venueData
+                          .map(
+                              (r) => `
                     <tr>
                         <td>${r.venue_name || 'Unnamed Venue'}</td>
                         <td><strong>${r.events_hosted || 0}</strong></td>
                     </tr>
-                `).join('') : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+                `
+                          )
+                          .join('')
+                    : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No matches.</td></tr>'
+                : '<tr><td colspan="2" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
 
-                const goodieRes = await fetch('/api/reports/goodies-status');
-                const goodieData = await goodieRes.json();
-                document.getElementById('goodie-report').innerHTML = goodieData.length ? goodieData.map(r => `
+            const goodieData = reportsCache.goodies.filter((r) =>
+                reportsFilter(q, [r.goodie_name || '', r.status || '', String(r.count || '')])
+            );
+            document.getElementById('goodie-report').innerHTML = reportsCache.goodies.length
+                ? goodieData.length
+                    ? goodieData
+                          .map(
+                              (r) => `
                     <tr>
                         <td>${r.goodie_name || 'Unnamed Goodie'}</td>
                         <td>${r.status || 'pending'}</td>
                         <td><strong>${r.count || 0}</strong></td>
                     </tr>
-                `).join('') : '<tr><td colspan="3" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+                `
+                          )
+                          .join('')
+                    : '<tr><td colspan="3" style="color: var(--text-dim); text-align:center;">No matches.</td></tr>'
+                : '<tr><td colspan="3" style="color: var(--text-dim); text-align:center;">No data yet</td></tr>';
+        }
 
+        async function loadReports() {
+            try {
+                const [attRes, spRes, bgRes, venueRes, goodieRes] = await Promise.all([
+                    fetch('/api/reports/event-attendance'),
+                    fetch('/api/reports/sponsor-contributions'),
+                    fetch('/api/reports/budget-status'),
+                    fetch('/api/reports/venue-usage'),
+                    fetch('/api/reports/goodies-status')
+                ]);
+                const attJson = await attRes.json();
+                reportsCache.attendance = Array.isArray(attJson) ? attJson : [];
+                const spJson = await spRes.json();
+                reportsCache.sponsors = Array.isArray(spJson) ? spJson : [];
+                const bgJson = await bgRes.json();
+                reportsCache.budget = Array.isArray(bgJson) ? bgJson : [];
+                const venueJson = await venueRes.json();
+                reportsCache.venues = Array.isArray(venueJson) ? venueJson : [];
+                const goodieJson = await goodieRes.json();
+                reportsCache.goodies = Array.isArray(goodieJson) ? goodieJson : [];
             } catch (err) {
                 console.error('Error loading reports:', err);
             }
+            renderReportsTables();
         }
     </script>
 </body>

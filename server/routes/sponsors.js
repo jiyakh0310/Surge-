@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
+function parseNullableInt(value) {
+    if (value === '' || value === undefined || value === null) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
 // Get all sponsors
 router.get('/', async (req, res) => {
     try {
@@ -42,9 +48,26 @@ router.post('/', async (req, res) => {
     try {
         const [result] = await pool.query(
             'INSERT INTO sponsors (sponsor_name, contact_no, event_id, contribution_amount) VALUES (?, ?, ?, ?)',
-            [normalizedName, normalizedContact, event_id ?? null, normalizedContribution]
+            [normalizedName, normalizedContact, parseNullableInt(event_id), normalizedContribution]
         );
         res.json({ id: result.insertId, message: 'Sponsor added' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update sponsor
+router.put('/:sponsor_id', async (req, res) => {
+    const { sponsor_name, contact_no, event_id, contribution_amount } = req.body;
+    const normalizedName = (sponsor_name ?? '').toString().trim() || 'Unnamed Sponsor';
+    const normalizedContact = (contact_no ?? '').toString().trim() || 'Not assigned';
+    const normalizedContribution = Number.isFinite(Number(contribution_amount)) ? Number(contribution_amount) : 0;
+    try {
+        await pool.query(
+            'UPDATE sponsors SET sponsor_name = ?, contact_no = ?, event_id = ?, contribution_amount = ? WHERE sponsor_id = ?',
+            [normalizedName, normalizedContact, parseNullableInt(event_id), normalizedContribution, req.params.sponsor_id]
+        );
+        res.json({ message: 'Sponsor updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

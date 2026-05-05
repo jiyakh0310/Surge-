@@ -6,13 +6,12 @@ async function fetchEvents() {
 
   try {
     const res = await fetch("/api/events");
-    const result = await res.json();
+    const result = await res.json().catch(() => ([]));
     const events = Array.isArray(result) ? result : (result.events || result.data || []);
     allEvents = Array.isArray(events) ? events : [];
 
-    if (!Array.isArray(allEvents)) {
-      throw new Error(result.error || "Events API did not return a valid list");
-    }
+    // normalize to array always
+    if (!Array.isArray(allEvents)) allEvents = [];
 
     renderEvents(allEvents);
   } catch (err) {
@@ -47,13 +46,17 @@ function renderEvents(events) {
   grid.innerHTML = events.map(event => {
     const eventId = getEventId(event);
     const eventName = getEventName(event);
+    const clubName = event.club_name || "General";
+    const clubLogo = event.club_logo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent((clubName || "C").charAt(0))}&background=18223b&color=4ce5f1&size=48&rounded=true`;
+    const venueName = event.venue_name || "TBA";
 
     return `
       <div class="glass-card event-card animate">
         <div class="card-content">
-          <span style="font-size:0.75rem; text-transform:uppercase; color:var(--accent-lavender); font-weight:700; display:block; margin-bottom:0.5rem;">
-            ${event.club_name || "General"}
-          </span>
+          <div class="club-tag">
+            <img src="${clubLogo}" alt="" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=C&background=18223b&color=4ce5f1&size=48&rounded=true'">
+            <span>${clubName}</span>
+          </div>
 
           <h3>${eventName}</h3>
 
@@ -75,7 +78,7 @@ function renderEvents(events) {
                   })
                 : "Date TBA"
             }</span>
-            <span>📍 ${event.venue_name || "TBA"}</span>
+            <span>📍 ${venueName}</span>
           </div>
         </div>
 

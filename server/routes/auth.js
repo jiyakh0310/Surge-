@@ -54,13 +54,26 @@ router.get('/profile/:id', async (req, res) => {
 
         const user = userRows[0];
 
-        // Get registered events if user is a participant (matching by email)
+        if (user.role === 'organizer') {
+            // Get organizer stats
+            const [stats] = await db.execute(`
+                SELECT 
+                    (SELECT COUNT(*) FROM events) AS totalEvents,
+                    (SELECT COUNT(*) FROM participants) AS totalParticipants,
+                    (SELECT COUNT(*) FROM sponsors) AS totalSponsors,
+                    (SELECT IFNULL(SUM(budget_allocated), 0) FROM budget) AS totalBudget
+            `);
+            return res.json({ user, stats: stats[0], events: [], clubs: [] });
+        }
+
+        // Participant: Get registered events (matching by email)
         const [eventRows] = await db.execute(`
             SELECT
                 e.id AS event_id,
                 e.title AS event_name,
                 e.event_date,
-                v.name AS venue_name
+                v.name AS venue_name,
+                r.status
             FROM registrations r
             JOIN events e ON r.event_id = e.id
             LEFT JOIN venues v ON e.venue_id = v.id
@@ -69,7 +82,16 @@ router.get('/profile/:id', async (req, res) => {
             ORDER BY r.registration_date DESC
         `, [user.email]);
 
-        res.json({ user, events: eventRows });
+        // Participant: Get joined clubs
+        const [clubRows] = await db.execute(`
+            SELECT c.id AS club_id, c.name AS club_name, c.description, c.logo_url, pc.joined_at
+            FROM participant_clubs pc
+            JOIN clubs c ON pc.club_id = c.id
+            WHERE pc.user_id = ?
+            ORDER BY pc.joined_at DESC
+        `, [userId]);
+
+        res.json({ user, events: eventRows, clubs: clubRows });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

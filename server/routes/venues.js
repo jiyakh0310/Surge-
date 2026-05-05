@@ -59,6 +59,32 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Update venue
+router.put('/:id', async (req, res) => {
+    const { name, venue_name, capacity, venue_timings, poc_name, poc_contact } = req.body;
+    const normalizedName = (name ?? venue_name ?? "").toString().trim();
+    const normalizedTimings = (venue_timings ?? "").toString().trim();
+    const normalizedPocName = (poc_name ?? "").toString().trim();
+    const normalizedPocContact = (poc_contact ?? "").toString().trim();
+    const normalizedCapacity = Number.isFinite(Number(capacity)) ? Number(capacity) : 0;
+    try {
+        await pool.query(
+            'UPDATE venues SET name = ?, capacity = ?, venue_timings = ?, poc_name = ?, poc_contact = ? WHERE id = ?',
+            [
+                normalizedName || "Unnamed Venue",
+                normalizedCapacity,
+                normalizedTimings || "Not assigned",
+                normalizedPocName || "Not assigned",
+                normalizedPocContact || "Not assigned",
+                req.params.id
+            ]
+        );
+        res.json({ message: 'Venue updated' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Delete venue
 router.delete('/:id', async (req, res) => {
     try {

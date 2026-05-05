@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clubs | SURGE</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">SURGE</div>
+        <ul></ul>
+    </nav>
+
+    <div class="container">
+        <header style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>Campus Clubs</h1>
+                <p style="color: var(--text-gray);">Explore and join student-run clubs and communities.</p>
+            </div>
+            <div id="add-club-section"></div>
+        </header>
+        <p id="club-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
+        <p id="join-info" style="margin-bottom:1.5rem; color: var(--text-dim); font-size: 0.88rem;"></p>
+
+        <section class="filter-bar" style="margin-bottom: 1.25rem;">
+            <input type="search" id="clubs-search" placeholder="Search clubs by name..." style="flex: 1; max-width: 420px;">
+        </section>
+
+        <div class="card-scroll-inner">
+            <div class="grid" id="clubs-grid">
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: var(--text-dim);">Loading clubs...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Club Modal -->
+    <div id="club-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="glass-card modal-card" style="width: 100%; max-width: 450px; padding: 2rem;">
+            <h2 id="modal-title" style="margin-bottom: 1.5rem;">Add Club</h2>
+            <form id="club-form">
+                <input type="hidden" id="edit_id">
+                <div class="form-group">
+                    <label>Club Name</label>
+                    <input type="text" id="club_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="club_description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="url" id="club_logo_url" placeholder="https://...">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;" id="modal-submit-btn">Save Club</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/clubs.js"></script>
+</body>
+</html>

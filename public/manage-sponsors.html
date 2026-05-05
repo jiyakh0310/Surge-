@@ -18,12 +18,16 @@
                 <h1>Manage Sponsors</h1>
                 <p style="color: var(--text-gray);">Track corporate partnerships and contributions.</p>
             </div>
-            <button class="btn btn-primary" onclick="showAddModal()">Add Sponsor</button>
+            <button class="btn btn-primary" onclick="openModal()">Add Sponsor</button>
         </header>
         <p id="sponsor-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
 
+        <section class="filter-bar" style="margin-bottom: 1.25rem;">
+            <input type="search" id="sponsors-search" placeholder="Search by sponsor or event..." style="flex: 1; max-width: 420px;">
+        </section>
+
         <div class="glass-card">
-            <div class="table-container">
+            <div class="table-container card-scroll-inner">
                 <table>
                     <thead>
                         <tr>
@@ -31,21 +35,23 @@
                             <th>Contact</th>
                             <th>Linked Event</th>
                             <th>Contribution</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="sponsors-table-body">
-                        <tr><td colspan="4" style="text-align: center;">Loading sponsors...</td></tr>
+                        <tr><td colspan="5" style="text-align: center;">Loading sponsors...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Add Modal -->
-    <div id="add-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+    <!-- Add/Edit Modal -->
+    <div id="sponsor-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
         <div class="glass-card modal-card" style="width: 100%; max-width: 450px; padding: 2rem;">
-            <h2 style="margin-bottom: 1.5rem;">Add Sponsor</h2>
-            <form id="add-sponsor-form">
+            <h2 id="modal-title" style="margin-bottom: 1.5rem;">Add Sponsor</h2>
+            <form id="sponsor-form">
+                <input type="hidden" id="edit_id">
                 <div class="form-group">
                     <label>Sponsor Name</label>
                     <input type="text" id="sponsor_name" required>
@@ -55,7 +61,7 @@
                     <input type="text" id="contact_no" required>
                 </div>
                 <div class="form-group">
-                    <label>Contribution Amount</label>
+                    <label>Contribution Amount (₹)</label>
                     <input type="number" id="contribution_amount" step="0.01" required>
                 </div>
                 <div class="form-group">
@@ -65,8 +71,8 @@
                     </select>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Sponsor</button>
-                    <button type="button" class="btn btn-outline" onclick="hideAddModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;" id="modal-submit-btn">Save Sponsor</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex: 1;">Cancel</button>
                 </div>
             </form>
         </div>
@@ -75,18 +81,63 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
+        let eventsCache = [];
+        let sponsorsAll = [];
+
         document.addEventListener('DOMContentLoaded', () => {
             auth.requireOrganizer();
             loadSponsors();
             loadEvents();
+            const se = document.getElementById('sponsors-search');
+            if (se) se.addEventListener('input', () => renderSponsorsTable());
         });
 
         async function loadEvents() {
             const res = await fetch('/api/events');
             const result = await res.json();
-            const events = Array.isArray(result) ? result : (result.events || result.data || []);
-            document.getElementById('event_id').innerHTML += events
-                .map(e => `<option value="${e.event_id || e.id || ''}">${e.event_name || e.title || 'Untitled Event'}</option>`)
+            eventsCache = Array.isArray(result) ? result : (result.events || result.data || []);
+        }
+
+        function populateEventDropdown(selectedId) {
+            document.getElementById('event_id').innerHTML = '<option value="">Select Event</option>' +
+                eventsCache.map(e => `<option value="${e.event_id || e.id || ''}" ${(e.event_id || e.id) == selectedId ? 'selected' : ''}>${e.event_name || e.title || 'Untitled Event'}</option>`).join('');
+        }
+
+        function renderSponsorsTable() {
+            const tbody = document.getElementById('sponsors-table-body');
+            const q = (document.getElementById('sponsors-search')?.value || '').toLowerCase().trim();
+            const data = !q
+                ? sponsorsAll
+                : sponsorsAll.filter((s) => {
+                      const sn = (s.sponsor_name || '').toLowerCase();
+                      const en = (s.event_name || '').toLowerCase();
+                      return sn.includes(q) || en.includes(q);
+                  });
+            if (sponsorsAll.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim);">No data yet</td></tr>';
+                return;
+            }
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim);">No matches.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data
+                .map(
+                    (s) => `
+                    <tr>
+                        <td><strong>${s.sponsor_name || 'Unnamed Sponsor'}</strong></td>
+                        <td>${s.contact_no || 'Not assigned'}</td>
+                        <td style="color: var(--accent-lavender);">${s.event_name || 'Untitled Event'}</td>
+                        <td style="color: var(--accent-cyan);">₹${Number(s.contribution_amount).toLocaleString()}</td>
+                        <td>
+                            <div class="row-actions">
+                                <button type="button" class="action-icon" title="Edit" onclick='editSponsor(${s.sponsor_id}, ${JSON.stringify(s.sponsor_name || '')}, ${JSON.stringify(s.contact_no || '')}, ${s.event_id || 0}, ${s.contribution_amount || 0})'>✏️</button>
+                                <button type="button" class="action-icon delete" title="Delete" onclick="deleteSponsor(${s.sponsor_id || 0})">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `
+                )
                 .join('');
         }
 
@@ -94,30 +145,36 @@
             try {
                 const res = await fetch('/api/sponsors');
                 const result = await res.json();
-                const data = Array.isArray(result) ? result : [];
-                const tbody = document.getElementById('sponsors-table-body');
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">No data yet</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = data.map(s => `
-                    <tr>
-                        <td><strong>${s.sponsor_name || 'Unnamed Sponsor'}</strong></td>
-                        <td>${s.contact_no || 'Not assigned'}</td>
-                        <td style="color: var(--accent-lavender);">${s.event_name || 'Untitled Event'}</td>
-                        <td style="color: var(--accent-cyan); display: flex; justify-content: space-between; align-items: center;">
-                            <span>$${Number(s.contribution_amount).toLocaleString()}</span>
-                            <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: var(--accent-pink); color: var(--accent-pink); white-space: nowrap; margin-left: 1rem;" onclick="deleteSponsor(${s.sponsor_id || 0})">Delete</button>
-                        </td>
-                    </tr>
-                `).join('');
+                sponsorsAll = Array.isArray(result) ? result : [];
+                renderSponsorsTable();
             } catch (err) {
                 console.error(err);
             }
         }
 
-        function showAddModal() { document.getElementById('add-modal').style.display = 'flex'; }
-        function hideAddModal() { document.getElementById('add-modal').style.display = 'none'; }
+        function openModal(isEdit = false) {
+            document.getElementById('modal-title').textContent = isEdit ? 'Edit Sponsor' : 'Add Sponsor';
+            document.getElementById('modal-submit-btn').textContent = isEdit ? 'Update Sponsor' : 'Save Sponsor';
+            if (!isEdit) {
+                document.getElementById('sponsor-form').reset();
+                document.getElementById('edit_id').value = '';
+                populateEventDropdown('');
+            }
+            document.getElementById('sponsor-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('sponsor-modal').style.display = 'none';
+        }
+
+        function editSponsor(id, name, contact, eventId, amount) {
+            document.getElementById('edit_id').value = id;
+            document.getElementById('sponsor_name').value = name;
+            document.getElementById('contact_no').value = contact;
+            document.getElementById('contribution_amount').value = amount;
+            populateEventDropdown(eventId);
+            openModal(true);
+        }
 
         async function deleteSponsor(id) {
             if (confirm('Are you sure you want to delete this sponsor?')) {
@@ -139,27 +196,32 @@
             }
         }
 
-        document.getElementById('add-sponsor-form').addEventListener('submit', async (e) => {
+        document.getElementById('sponsor-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('sponsor-msg');
+            const editId = document.getElementById('edit_id').value;
+            const evRaw = document.getElementById('event_id').value;
             const data = {
                 sponsor_name: document.getElementById('sponsor_name').value,
                 contact_no: document.getElementById('contact_no').value,
                 contribution_amount: document.getElementById('contribution_amount').value,
-                event_id: document.getElementById('event_id').value
+                event_id: evRaw === '' ? null : Number(evRaw)
             };
 
-            const res = await fetch('/api/sponsors', {
-                method: 'POST',
+            const url = editId ? `/api/sponsors/${editId}` : '/api/sponsors';
+            const method = editId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             if (res.ok) {
-                hideAddModal();
+                closeModal();
                 loadSponsors();
-                document.getElementById('add-sponsor-form').reset();
+                document.getElementById('sponsor-form').reset();
                 msg.style.color = 'var(--accent-cyan)';
-                msg.textContent = 'Sponsor saved successfully.';
+                msg.textContent = editId ? 'Sponsor updated successfully.' : 'Sponsor saved successfully.';
+                setTimeout(() => { msg.textContent = ''; }, 3000);
             } else {
                 const err = await res.json();
                 msg.style.color = 'var(--accent-pink)';

@@ -10,13 +10,7 @@
 <body>
     <nav>
         <div class="logo">SURGE</div>
-        <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="events.html">Events</a></li>
-            <li><a href="dashboard.html" class="active">Dashboard</a></li>
-            <li><a href="reports.html">Reports</a></li>
-            <li><a href="login.html" id="auth-btn">Login</a></li>
-        </ul>
+        <ul></ul>
     </nav>
 
     <div class="container">
@@ -53,7 +47,7 @@
             <!-- Recent Registrations -->
             <div class="glass-card">
                 <h3 style="margin-bottom: 1.5rem;">Recent Registrations</h3>
-                <div class="table-container">
+                <div class="table-container card-scroll-inner">
                     <table>
                         <thead>
                             <tr>
@@ -72,7 +66,7 @@
             <!-- Upcoming Events -->
             <div class="glass-card">
                 <h3 style="margin-bottom: 1.5rem;">Upcoming</h3>
-                <div id="upcoming-events" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div id="upcoming-events" class="card-scroll-inner" style="display: flex; flex-direction: column; gap: 1rem;">
                     <!-- Items -->
                 </div>
                 <a href="manage-events.html" class="btn btn-outline" style="width: 100%; margin-top: 2rem; font-size: 0.85rem;">Manage Events</a>
@@ -86,6 +80,10 @@
                 <a href="manage-events.html" class="shortcut-btn glass-card">
                     <span class="shortcut-icon">📅</span>
                     <span class="shortcut-label">Manage Events</span>
+                </a>
+                <a href="clubs.html" class="shortcut-btn glass-card">
+                    <span class="shortcut-icon">🏛️</span>
+                    <span class="shortcut-label">Clubs</span>
                 </a>
                 <a href="manage-venues.html" class="shortcut-btn glass-card">
                     <span class="shortcut-icon">🏢</span>

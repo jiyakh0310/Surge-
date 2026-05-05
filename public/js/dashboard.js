@@ -7,7 +7,7 @@ async function loadDashboard() {
 
     const safeMoney = (value) => {
         const num = Number(value);
-        return Number.isFinite(num) ? `$${num.toLocaleString()}` : '$0';
+        return Number.isFinite(num) ? `₹${num.toLocaleString()}` : '₹0';
     };
 
     try {

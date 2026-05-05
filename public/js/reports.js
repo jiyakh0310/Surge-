@@ -24,9 +24,9 @@ async function loadReports() {
         finTable.innerHTML = dataFin.map(item => `
             <tr>
                 <td>${item.title}</td>
-                <td>$${item.budget_allocated.toLocaleString()}</td>
+                <td>₹${item.budget_allocated.toLocaleString()}</td>
                 <td style="color: ${item.total_sponsorship >= item.budget_allocated ? '#4ce5f1' : '#f783ac'};">
-                    $${item.total_sponsorship.toLocaleString()}
+                    ₹${item.total_sponsorship.toLocaleString()}
                 </td>
             </tr>
         `).join('');

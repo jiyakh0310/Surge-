@@ -19,8 +19,8 @@
             <p id="user-email" style="color: var(--text-gray);"></p>
         </header>
 
-        <div class="grid" style="grid-template-columns: 1fr 2fr;">
-            <!-- Left: Stats & Actions -->
+        <div class="grid" style="grid-template-columns: 1fr 2fr;" id="profile-layout">
+            <!-- Left: Account & Actions -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <div class="glass-card">
                     <h4 style="margin-bottom: 1rem; color: var(--accent-lavender);">Account Details</h4>
@@ -35,18 +35,12 @@
                         <!-- Dynamic Buttons -->
                     </div>
                 </div>
-
-                <div class="glass-card stat-card" id="event-stat-card">
-                    <span class="value" id="event-count">0</span>
-                    <span class="label">Registrations</span>
-                </div>
             </div>
 
-            <!-- Right: Registered Events -->
-            <div class="glass-card">
-                <h3 style="margin-bottom: 1.5rem;">Registered Events</h3>
-                <div id="events-list" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <p style="color: var(--text-dim);">Fetching registrations...</p>
+            <!-- Right: Dynamic Content -->
+            <div id="profile-right" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="glass-card">
+                    <p style="color: var(--text-dim);">Loading profile data...</p>
                 </div>
             </div>
         </div>
@@ -69,9 +63,11 @@
                 window.location.href = 'login.html';
             });
 
+            const isOrganizer = user.role === 'organizer';
+
             // Set Quick Actions based on role
             const actionContainer = document.getElementById('action-buttons');
-            if (user.role === 'organizer') {
+            if (isOrganizer) {
                 actionContainer.innerHTML = `
                     <a href="dashboard.html" class="btn btn-primary" style="font-size: 0.9rem; text-align: center;">Go to Dashboard</a>
                     <a href="manage-events.html" class="btn btn-outline" style="font-size: 0.9rem; text-align: center;">Manage Events</a>
@@ -79,6 +75,7 @@
             } else {
                 actionContainer.innerHTML = `
                     <a href="events.html" class="btn btn-primary" style="font-size: 0.9rem; text-align: center;">Register for New Event</a>
+                    <a href="clubs.html" class="btn btn-outline" style="font-size: 0.9rem; text-align: center;">Browse Clubs</a>
                 `;
             }
 
@@ -87,23 +84,129 @@
                 const res = await fetch(`/api/auth/profile/${user.user_id}`);
                 const data = await res.json();
                 
-                if (res.ok) {
-                    const list = document.getElementById('events-list');
-                    document.getElementById('event-count').innerText = data.events.length;
-                    
-                    if (data.events.length === 0) {
-                        list.innerHTML = '<p style="color: var(--text-dim);">No events registered yet.</p>';
+                if (!res.ok) {
+                    document.getElementById('profile-right').innerHTML = '<div class="glass-card"><p style="color: var(--accent-pink);">Error loading profile data.</p></div>';
+                    return;
+                }
+
+                const rightPanel = document.getElementById('profile-right');
+
+                if (isOrganizer) {
+                    // ── Organizer Profile ──
+                    const stats = data.stats || {};
+                    rightPanel.innerHTML = `
+                        <!-- Quick Stats -->
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.25rem;">Organizer Overview</h3>
+                            <div class="profile-stats-grid">
+                                <div class="profile-stat">
+                                    <span class="value">${stats.totalEvents || 0}</span>
+                                    <span class="label">Events</span>
+                                </div>
+                                <div class="profile-stat">
+                                    <span class="value">${stats.totalParticipants || 0}</span>
+                                    <span class="label">Participants</span>
+                                </div>
+                                <div class="profile-stat">
+                                    <span class="value">${stats.totalSponsors || 0}</span>
+                                    <span class="label">Sponsors</span>
+                                </div>
+                                <div class="profile-stat">
+                                    <span class="value">₹${Number(stats.totalBudget || 0).toLocaleString()}</span>
+                                    <span class="label">Total Budget</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Links -->
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.25rem;">Quick Links</h3>
+                            <div class="quick-links-grid">
+                                <a href="manage-events.html" class="quick-link">📅 Events</a>
+                                <a href="clubs.html" class="quick-link">🏛️ Clubs</a>
+                                <a href="manage-venues.html" class="quick-link">🏢 Venues</a>
+                                <a href="manage-sponsors.html" class="quick-link">🤝 Sponsors</a>
+                                <a href="manage-budget.html" class="quick-link">💰 Budget</a>
+                                <a href="manage-goodies.html" class="quick-link">🎁 Goodies</a>
+                                <a href="reports.html" class="quick-link">📈 Reports</a>
+                                <a href="dashboard.html" class="quick-link">📊 Dashboard</a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // ── Participant Profile ──
+                    const events = Array.isArray(data.events) ? data.events : [];
+                    let clubs = [];
+                    try {
+                        const clubRes = await fetch(`/api/clubs/my/${user.user_id}`);
+                        if (clubRes.ok) {
+                            const clubJson = await clubRes.json();
+                            clubs = Array.isArray(clubJson) ? clubJson : [];
+                        }
+                    } catch (_e) {
+                        clubs = [];
+                    }
+
+                    let eventsHtml = '';
+                    if (events.length === 0) {
+                        eventsHtml = '<p style="color: var(--text-dim);">No events registered yet.</p>';
                     } else {
-                        list.innerHTML = data.events.map(e => `
+                        eventsHtml = events.map(e => `
                             <div style="padding: 1.25rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.25rem;">${e.event_name}</h4>
-                                    <p style="font-size: 0.85rem; color: var(--text-dim);">📍 ${e.venue_name} | 📅 ${new Date(e.event_date).toLocaleDateString()}</p>
+                                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.25rem;">${e.event_name || 'Untitled Event'}</h4>
+                                    <p style="font-size: 0.85rem; color: var(--text-dim);">📍 ${e.venue_name || 'TBA'} &nbsp;|&nbsp; 📅 ${e.event_date ? new Date(e.event_date).toLocaleDateString() : 'TBA'}</p>
                                 </div>
-                                <a href="events.html" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.8rem;">View</a>
+                                <span style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.8rem; border-radius: 999px; background: ${e.status === 'Confirmed' ? 'rgba(76,229,241,0.15)' : 'rgba(247,131,172,0.15)'}; color: ${e.status === 'Confirmed' ? 'var(--accent-cyan)' : 'var(--accent-pink)'}; text-transform: uppercase; letter-spacing: 0.5px;">${e.status || 'Pending'}</span>
                             </div>
                         `).join('');
                     }
+
+                    let clubsHtml = '';
+                    if (clubs.length === 0) {
+                        clubsHtml = '<p style="color: var(--text-dim);">You haven\'t joined any clubs yet. <a href="clubs.html" style="color: var(--accent-cyan);">Browse clubs</a></p>';
+                    } else {
+                        clubsHtml =
+                            '<div class="card-scroll-inner" style="padding-right: 0.35rem;"><div style="display: flex; flex-direction: column; gap: 0.65rem;">' +
+                            clubs
+                                .map((c) => {
+                                    const logo =
+                                        c.logo_url && String(c.logo_url).trim()
+                                            ? c.logo_url.trim()
+                                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(c.club_name || 'C')}&background=18223b&color=4ce5f1&size=64&rounded=true`;
+                                    const joined =
+                                        c.joined_at != null
+                                            ? new Date(c.joined_at).toLocaleDateString()
+                                            : '—';
+                                    return `
+                                <div style="display: flex; align-items: center; gap: 0.85rem; padding: 0.85rem 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                                    <img src="${logo}" alt="" width="48" height="48" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=Club&background=18223b&color=4ce5f1&size=64&rounded=true'">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <p style="font-size: 0.9rem; font-weight: 600; color: var(--accent-cyan); margin-bottom: 0.2rem;">${c.club_name || 'Club'}</p>
+                                        <p style="font-size: 0.78rem; color: var(--text-dim);">Joined ${joined}</p>
+                                    </div>
+                                </div>
+                            `;
+                                })
+                                .join('') +
+                            '</div></div>';
+                    }
+
+                    rightPanel.innerHTML = `
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.25rem;">Registered Events <span style="font-size: 0.85rem; color: var(--accent-lavender); font-weight: 400;">(${events.length})</span></h3>
+                            <div class="card-scroll-inner" style="padding-right: 0.35rem;">
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                ${eventsHtml}
+                            </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.25rem;">My Clubs <span style="font-size: 0.85rem; color: var(--accent-lavender); font-weight: 400;">(${clubs.length}/3)</span></h3>
+                            ${clubsHtml}
+                        </div>
+                    `;
                 }
             } catch (err) {
                 console.error('Error fetching profile:', err);

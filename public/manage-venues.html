@@ -18,7 +18,7 @@
                 <h1>Manage Venues</h1>
                 <p style="color: var(--text-gray);">View campus locations and capacities.</p>
             </div>
-            <button class="btn btn-primary" onclick="showVenueModal()">Add Venue</button>
+            <button class="btn btn-primary" onclick="openModal()">Add Venue</button>
         </header>
         <p id="venue-msg" style="margin-bottom:1rem; color: var(--text-dim);"></p>
 
@@ -28,16 +28,17 @@
     </div>
     <div id="venue-modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
         <div class="glass-card modal-card" style="width: 100%; max-width: 500px; padding: 2rem;">
-            <h2 style="margin-bottom: 1rem;">Add Venue</h2>
+            <h2 id="modal-title" style="margin-bottom: 1rem;">Add Venue</h2>
             <form id="venue-form">
+                <input type="hidden" id="edit_id">
                 <div class="form-group"><label>Name</label><input id="venue_name" required /></div>
                 <div class="form-group"><label>Capacity</label><input id="capacity" type="number" required /></div>
                 <div class="form-group"><label>Timings</label><input id="venue_timings" /></div>
                 <div class="form-group"><label>POC Name</label><input id="poc_name" /></div>
                 <div class="form-group"><label>POC Contact</label><input id="poc_contact" /></div>
                 <div style="display:flex; gap:1rem;">
-                    <button type="submit" class="btn btn-primary" style="flex:1;">Save Venue</button>
-                    <button type="button" class="btn btn-outline" onclick="hideVenueModal()" style="flex:1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex:1;" id="modal-submit-btn">Save Venue</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex:1;">Cancel</button>
                 </div>
             </form>
         </div>
@@ -62,20 +63,53 @@
                     return;
                 }
                 
-                grid.innerHTML = safeVenues.map(v => `
-                    <div class="glass-card">
-                        <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">${v.venue_name || v.name || 'Unnamed Venue'}</h3>
-                        <p style="margin-bottom: 0.5rem;"><strong>Capacity:</strong> ${v.capacity ?? 0} persons</p>
-                        <p style="margin-bottom: 1.5rem;"><strong>Timings:</strong> ${v.venue_timings || 'Not assigned'}</p>
-                        <button class="btn btn-outline" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="deleteVenue(${v.venue_id || v.id})">Delete</button>
+                grid.innerHTML = safeVenues.map(v => {
+                    const vid = v.venue_id || v.id;
+                    return `
+                    <div class="glass-card mgmt-card">
+                        <div class="card-actions">
+                            <button type="button" class="action-icon" title="Edit" onclick='editVenue(${vid}, ${JSON.stringify(v.venue_name || v.name || "")}, ${v.capacity || 0}, ${JSON.stringify(v.venue_timings || "")}, ${JSON.stringify(v.poc_name || "")}, ${JSON.stringify(v.poc_contact || "")})'>✏️</button>
+                            <button type="button" class="action-icon delete" title="Delete" onclick="deleteVenue(${vid})">🗑️</button>
+                        </div>
+                        <div class="card-body-scroll">
+                            <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">${v.venue_name || v.name || 'Unnamed Venue'}</h3>
+                            <p style="margin-bottom: 0.5rem;"><strong>Capacity:</strong> ${v.capacity ?? 0} persons</p>
+                            <p style="margin-bottom: 1rem;"><strong>Timings:</strong> ${v.venue_timings || 'Not assigned'}</p>
+                            <div class="poc-details" style="margin-top: 0; padding-top: 0.75rem; border-top: 1px solid var(--glass-border);">
+                                <span><strong>POC:</strong> ${v.poc_name || 'Not assigned'}</span>
+                                <span><strong>Contact:</strong> ${v.poc_contact || 'Not assigned'}</span>
+                            </div>
+                        </div>
                     </div>
-                `).join('');
+                `}).join('');
             } catch (err) {
                 console.error('Error loading venues:', err);
             }
         }
-        function showVenueModal() { document.getElementById('venue-modal').style.display = 'flex'; }
-        function hideVenueModal() { document.getElementById('venue-modal').style.display = 'none'; }
+
+        function openModal(isEdit = false) {
+            document.getElementById('modal-title').textContent = isEdit ? 'Edit Venue' : 'Add Venue';
+            document.getElementById('modal-submit-btn').textContent = isEdit ? 'Update Venue' : 'Save Venue';
+            if (!isEdit) {
+                document.getElementById('venue-form').reset();
+                document.getElementById('edit_id').value = '';
+            }
+            document.getElementById('venue-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('venue-modal').style.display = 'none';
+        }
+
+        function editVenue(id, name, capacity, timings, pocName, pocContact) {
+            document.getElementById('edit_id').value = id;
+            document.getElementById('venue_name').value = name;
+            document.getElementById('capacity').value = capacity;
+            document.getElementById('venue_timings').value = timings;
+            document.getElementById('poc_name').value = pocName;
+            document.getElementById('poc_contact').value = pocContact;
+            openModal(true);
+        }
 
         async function deleteVenue(id) {
             if (confirm('Are you sure you want to delete this venue?')) {
@@ -100,6 +134,7 @@
         document.getElementById('venue-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('venue-msg');
+            const editId = document.getElementById('edit_id').value;
             const payload = {
                 name: document.getElementById('venue_name').value,
                 capacity: document.getElementById('capacity').value,
@@ -107,17 +142,20 @@
                 poc_name: document.getElementById('poc_name').value,
                 poc_contact: document.getElementById('poc_contact').value
             };
-            const res = await fetch('/api/venues', {
-                method: 'POST',
+            const url = editId ? `/api/venues/${editId}` : '/api/venues';
+            const method = editId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
-                hideVenueModal();
+                closeModal();
                 document.getElementById('venue-form').reset();
                 loadVenues();
                 msg.style.color = 'var(--accent-cyan)';
-                msg.textContent = 'Venue saved successfully.';
+                msg.textContent = editId ? 'Venue updated successfully.' : 'Venue saved successfully.';
+                setTimeout(() => { msg.textContent = ''; }, 3000);
             } else {
                 const err = await res.json();
                 msg.style.color = 'var(--accent-pink)';
