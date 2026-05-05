@@ -1,4 +1,4 @@
-# SURGE - College Event Management System
+# SURGE - Event Management System
 
 A premium, modern, and centralized platform to manage college events, participants, clubs, venues, and finances. Built with a focus on robust database management and futuristic UI.
 
